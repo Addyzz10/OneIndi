@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneIndi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>OneIndi</h1>
+        <div>
+            <label for="action">Choose an action:</label>
+            <select id="action">
+                <option value="voice_to_voice">Voice to Voice Translate</option>
+                <option value="voice_to_text">Voice to Text Translate</option>
+                <option value="text_to_voice">Text to Voice Translate</option>
+                <option value="file_translate">File Translate</option>
+                <option value="image_translate">Image Translate</option>
+                <option value="youtube_caption">YouTube Caption Translate</option>
+            </select>
+        </div>
+        <div id="language-selection">
+            <label for="from_lang">Translate from:</label>
+            <select id="from_lang">
+                <option value="en">English</option>
+                <option value="bn">Bengali</option>
+                <option value="gu">Gujarati</option>
+                <option value="hi">Hindi</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="mr">Marathi</option>
+                <option value="ne">Nepali</option>
+                <option value="pa">Punjabi</option>
+                <option value="ta">Tamil</option>
+                <option value="te">Telugu</option>
+                <option value="ur">Urdu</option>
+            </select>
+            <label for="to_lang">Translate to:</label>
+            <select id="to_lang">
+                <option value="en">English</option>
+                <option value="bn">Bengali</option>
+                <option value="gu">Gujarati</option>
+                <option value="hi">Hindi</option>
+                <option value="kn">Kannada</option>
+                <option value="ml">Malayalam</option>
+                <option value="mr">Marathi</option>
+                <option value="ne">Nepali</option>
+                <option value="pa">Punjabi</option>
+                <option value="ta">Tamil</option>
+                <option value="te">Telugu</option>
+                <option value="ur">Urdu</option>
+            </select>
+        </div>
+        <div id="text-input" class="hidden">
+            <label for="text">Text:</label>
+            <input type="text" id="text">
+        </div>
+        <div id="file-input" class="hidden">
+            <label for="file">Upload file (.txt or .pdf):</label>
+            <input type="file" id="file" accept=".txt, .pdf">
+        </div>
+        <div id="image-input" class="hidden">
+            <label for="image">Upload image (.jpg, .jpeg, .png):</label>
+            <input type="file" id="image" accept=".jpg, .jpeg, .png">
+        </div>
+        <div id="youtube-input" class="hidden">
+            <label for="video-id">YouTube Video ID:</label>
+            <input type="text" id="video-id" placeholder="Enter YouTube video ID">
+        </div>
+        <button onclick="performAction()">Go</button>
+
+        <div id="result"></div>
+        <div id="error" style="color: red;"></div>
+        <div id="available-languages"></div>
+    </div>
+
+    <script>
+        document.getElementById('action').addEventListener('change', function() {
+            var action = this.value;
+            document.getElementById('text-input').classList.add('hidden');
+            document.getElementById('file-input').classList.add('hidden');
+            document.getElementById('image-input').classList.add('hidden');
+            document.getElementById('youtube-input').classList.add('hidden');
+
+            if (action === 'text_to_voice') {
+                document.getElementById('text-input').classList.remove('hidden');
+            } else if (action === 'file_translate') {
+                document.getElementById('file-input').classList.remove('hidden');
+            } else if (action === 'image_translate') {
+                document.getElementById('image-input').classList.remove('hidden');
+            } else if (action === 'youtube_caption') {
+                document.getElementById('youtube-input').classList.remove('hidden');
+            }
+        });
+
+        function performAction() {
+            var action = document.getElementById('action').value;
+            var fromLang = document.getElementById('from_lang').value;
+            var toLang = document.getElementById('to_lang').value;
+            var resultDiv = document.getElementById('result');
+            var errorDiv = document.getElementById('error');
+            var langDiv = document.getElementById('available-languages');
+
+            // Clear previous results and errors
+            resultDiv.innerText = '';
+            errorDiv.innerText = '';
+            langDiv.innerText = '';
+
+            if (action === 'voice_to_voice' || action === 'voice_to_text') {
+                fetch('/translate_voice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from_lang: fromLang,
+                        to_lang: toLang,
+                        translate_to_voice: action === 'voice_to_voice'
+                    })
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.error) {
+                          errorDiv.innerText = data.error;
+                      } else {
+                          resultDiv.innerText = data.translated_text;
+                      }
+                  });
+            } else if (action === 'text_to_voice') {
+                var text = document.getElementById('text').value;
+                fetch('/text_to_speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        to_lang: toLang
+                    })
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.error) {
+                          errorDiv.innerText = data.error;
+                      } else {
+                          resultDiv.innerText = 'Audio played successfully';
+                      }
+                  });
+            } else if (action === 'file_translate') {
+                var fileInput = document.getElementById('file');
+                var file = fileInput.files[0];
+                var formData = new FormData();
+                formData.append('file', file);
+                formData.append('from_lang', fromLang);
+                formData.append('to_lang', toLang);
+
+                fetch('/file_translate', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json())
+                  .then(data => {
+                      resultDiv.innerText = data.translated_text;
+                  });
+            } else if (action === 'image_translate') {
+                var imageInput = document.getElementById('image');
+                var image = imageInput.files[0];
+                var formData = new FormData();
+                formData.append('file', image);
+                formData.append('from_lang', fromLang);
+                formData.append('to_lang', toLang);
+
+                fetch('/image_translate', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json())
+                  .then(data => {
+                      resultDiv.innerText = data.translated_text;
+                  });
+            } else if (action === 'youtube_caption') {
+                var videoId = document.getElementById('video-id').value;
+                fetch('/youtube_caption_translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ video_id: videoId, to_lang: toLang })
+                })
+                .then(response => { 
+                    // Check for error status code before trying to parse JSON
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok.'); 
+                    }
+                    return response.json(); // Parse the JSON response
+                })
+                .then(data => {
+                    if (data.error)   
+ {
+                        errorDiv.innerText = data.error;
+                        if (data.available_languages) {
+                            langDiv.innerHTML = '<strong>Available languages:</strong><br>' + data.available_languages.join('<br>');
+                        }
+                    } else {
+                        resultDiv.innerText = data.translated_text; 
+                    }
+                })
+                .catch(error => {
+                    if (error.message === 'Network response was not ok.') {
+                        fetch(response.url)
+                        .then(resp => resp.text())
+                        .then(text => errorDiv.innerText = `Error details: ${text}`);
+                    } else {
+                        errorDiv.innerText = 'An error occurred: ' + error.message;
+                        console.error('Error:', error);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
